@@ -33,13 +33,15 @@ class Command():
 
 def command():
     c = Command()
-    sources, reqs = c.requirements('requirements.github')
+    input_file = sys.argv[1] if len(sys.argv) > 1 else 'requirements.github'
+    output_file = sys.argv[2] if len(sys.argv) > 2 else 'requirements.local'
+    sources, reqs = c.requirements(input_file)
     print '-'*80
     print reqs
     print '-'*80
     print sources
-    write_file('requirements.github.txt', reqs)
-    write_file('requirements.local', sources)
+    write_file(input_file + '.txt', reqs)
+    write_file(output_file, sources)
 
 
 if __name__ == '__main__':
