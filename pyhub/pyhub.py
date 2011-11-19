@@ -11,8 +11,6 @@ pyhub django/django @1.3.1
 ./src/
 """
 
-import json
-import urllib2
 import os
 import re
 import sys
@@ -23,86 +21,44 @@ class GitHubRepo():
     
     def __init__(self, user, repo, ref=None):
         self.github = GitHubAPI(user=user, repo=repo, ref=ref)
-        self.user = user
-        self.repo = repo
-        self.ref = ref or 'head'
-        self.sha = self.get_sha()
         self.path = './src'
         self.download_and_unpack()
-
-#    def get_sha1(self):
-#        raw_json = urllib2.urlopen(self.get_commits_url()).read()
-#        return json.loads(raw_json)['sha']
-
-    def get_json(self, url):
-        return json.loads(urllib2.urlopen(url).read())
-
-    def find_ref_in(self, where):
-        if where == 'commits':
-            ref = self.get_json(self.get_commits_url())
-            if ref.get('message') != 'Not Found':
-                return ref
-        else:
-            try:
-                for ref in self.get_json(self.get_refs_url() + '/' + where):
-                    name = ref['ref'].split('/',2)[-1]
-                    if name == self.ref:
-                        return ref
-            except urllib2.HTTPError:
-                pass
-
-    def get_sha(self):
-        ref = self.find_ref_in('commits')#self.find_ref_in('heads') or self.find_ref_in('tags') or
-        if ref:
-            return ref.get('sha') or ref['object']['sha']
-        else:
-            raise Exception('Ref was not found: %s' % self.ref)
-
-    def get_commits_url(self):
-        return 'https://api.github.com/repos/%s/%s/commits/%s' % (self.user, self.repo, self.ref)
-
-    def get_refs_url(self):
-        return 'https://api.github.com/repos/%s/%s/git/refs' % (self.user, self.repo)
-
-    def get_tarball_url(self):
-        return 'https://nodeload.github.com/%s/%s/tarball/%s' % (self.user, self.repo, self.ref)
 
     def download_and_unpack(self):
         if self.downloaded(): return
         if not os.path.exists(self.path): os.makedirs(self.path)
         self.remove_old_versions()
-        #print self.get_tarball_url()
         os.system('curl %s | tar xz --directory=%s' % (
-            self.get_tarball_url(),
+            self.github.get_tarball_url(),
             self.path
         ))
-        os.system('mv %s/%s-%s-* %s' % (self.path, self.user, self.repo, self.unpack_dir()))
+        os.system('mv %s/%s-%s-* %s' % (self.path, self.github.user, self.github.repo, self.get_unpack_path()))
         if not self.downloaded():
-            raise Exception('Failed to download github repo %s for sha %s' % (self.repo, self.sha[0:7]))
+            raise Exception('Failed to download github repo "%s" for sha %s' % (self.github.repo, self.github.short_sha()))
 
     def downloaded(self):
-        return os.path.exists(self.unpack_dir())
+        return os.path.exists(self.get_unpack_path())
 
     def remove_old_versions(self):
-        os.system('rm -r %s/%s-%s-*' % (self.path, self.user, self.repo))
+        os.system('rm -r %s/%s-%s-*' % (self.path, self.github.user, self.github.repo))
 
-    def unpack_dir(self):
+    def get_unpack_path(self):
         return '%s/%s-%s-%s' % (
             self.path,
-            self.user,
-            self.repo,
-            self.sha[0:7]
+            self.github.user,
+            self.github.repo,
+            self.github.short_sha(),
         )
 
     def line(self):
-        return '-e ' + self.unpack_dir()
+        return '-e ' + self.get_unpack_path()
 
     def req(self):
         return '-e git+git@github.com:%s/%s.git@%s#egg=%s-dev' % (
-            self.user,
-            self.repo,
-            self.sha,
-            self.repo
+            self.github.user,
+            self.github.repo,
+            self.github.commit_sha,
+            self.github.repo
         )
 
 
@@ -137,22 +93,27 @@ class Command():
             line = line.split('#')[0].strip()
             if len(line):
                 try:
-                    sources.append(Source(line))
+                    m = re.search(r'(?P<user>\S+)/(?P<repo>\S+)(\s*@(?P<ref>\S+))?', line)
+                    repo = GitHubRepo(user=m.group('user'), repo=m.group('repo'), ref=m.group('ref'))
+                    sources.append(repo)
+                    
                 except Exception as e:
                     sys.stderr.write('%s %s' % (line, e))
-        self.reqs = '\n'.join([s.req or s.line for s in sources])
-        return '\n'.join([s.line for s in sources])
+        reqs = '\n'.join([s.req or s.line for s in sources])
+        sources = '\n'.join([s.line for s in sources])
+        return sources, reqs
+
+def write_to_file(path, content):
+    f = open(path, 'w')
+    f.write(content)
+    f.close()
+
+def command():
+    c = Command()
+    sources, reqs = c.requirements('requirements.github')
+    print sources
+    write_to_file('requirements.txt', reqs+'\n')
 
 
 if __name__ == '__main__':
-    c = Command()
-    sources = c.requirements(sys.argv[1])
-    if len(sys.argv) > 2:
-        f = open(sys.argv[2], 'w')
-        f.write(sources+'\n')
-        f.close()
-    if len(sys.argv) > 3:
-        f = open(sys.argv[3], 'w')
-        f.write(c.reqs+'\n')
-        f.close()
-    print sources
+    command()
