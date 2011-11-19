@@ -12,6 +12,6 @@ setup(name='pyhub',
       license = 'MIT',
       requires = [],
       entry_points = {
-          'console_scripts' : ['pyhub = pyhub.pyhub:run']
+          'console_scripts' : ['pyhub = pyhub.pyhub:command']
       }
     )
