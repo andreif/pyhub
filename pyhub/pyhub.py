@@ -62,28 +62,6 @@ class GitHubRepo():
         )
 
 
-class Source():
-    
-    def __init__(self, str):
-        self.line = ''
-        self.req = ''
-        self.parse(str)
-
-    def parse(self, str):
-        if str.startswith('github:'):
-            repo = self.parse_github(str[7:])
-            self.line = repo.line()
-            self.req = repo.req()
-        elif str.startswith('bitbucket:'):
-            pass
-        else:
-            self.line = str
-
-    def parse_github(self, str):
-        m = re.search(r'(?P<user>\S+)/(?P<repo>\S+)(\s*@(?P<ref>\S+))?', str)
-        return GitHubRepo(user=m.group('user'), repo=m.group('repo'), ref=m.group('ref'))
-
-
 class Command():
     def requirements(self, filename):
         source_file = open(filename)
@@ -102,6 +80,7 @@ class Command():
         reqs = '\n'.join([s.req or s.line for s in sources])
         sources = '\n'.join([s.line for s in sources])
         return sources, reqs
+
 
 def write_to_file(path, content):
     f = open(path, 'w')
