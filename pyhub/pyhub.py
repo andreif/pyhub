@@ -2,17 +2,14 @@
 """
     pip install virtualenv
     virtualenv --no-site-packages .
-    python flow/pipgit.py flow/requirements.git > flow/requirements.pip
     source bin/activate
-    pip install --no-dependencies -r flow/requirements.pip
-    pip freeze > flow/requirements.txt
-
-pyhub django/django @1.3.1
-./src/
+    python pyhub.py
+    pip install --no-dependencies -r requirements.local
 """
 import re
 import sys
 from github_repo import GitHubRepo
+from utils import write_file, append_file, read_file
 
 class Command():
     def requirements(self, filename):
@@ -34,17 +31,15 @@ class Command():
         return sources, reqs
 
 
-def write_to_file(path, content):
-    f = open(path, 'w')
-    f.write(content)
-    f.close()
-
 def command():
     c = Command()
     sources, reqs = c.requirements('requirements.github')
+    print '-'*80
+    print reqs
+    print '-'*80
     print sources
-    write_to_file('requirements.txt', sources+'\n')
-    write_to_file('requirements.pip', reqs+'\n')
+    write_file('requirements.github.txt', reqs)
+    write_file('requirements.local', sources)
 
 
 if __name__ == '__main__':
