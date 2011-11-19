@@ -64,21 +64,20 @@ class GitHubRepo():
 
 class Command():
     def requirements(self, filename):
-        source_file = open(filename)
         sources = []
+        source_file = open(filename, 'r')
         lines = source_file.read().split('\n')
+        source_file.close()
         for line in lines:
             line = line.split('#')[0].strip()
             if len(line):
                 try:
                     m = re.search(r'(?P<user>\S+)/(?P<repo>\S+)(\s*@(?P<ref>\S+))?', line)
-                    repo = GitHubRepo(user=m.group('user'), repo=m.group('repo'), ref=m.group('ref'))
-                    sources.append(repo)
-                    
+                    sources.append(GitHubRepo(user=m.group('user'), repo=m.group('repo'), ref=m.group('ref')))
                 except Exception as e:
                     sys.stderr.write('%s %s' % (line, e))
-        reqs = '\n'.join([s.req or s.line for s in sources])
-        sources = '\n'.join([s.line for s in sources])
+        reqs = '\n'.join([s.req() or s.line() for s in sources])
+        sources = '\n'.join([s.line() for s in sources])
         return sources, reqs
 
 
