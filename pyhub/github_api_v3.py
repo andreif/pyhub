@@ -7,7 +7,11 @@ class GitHubAPI():
         self.user = user
         self.repo = repo
         self.ref = ref or 'head'
+        self.commit_sha = None
         self.sha = self.get_sha()
+
+    def short_sha(self, length=7):
+        return self.commit_sha[0:length]
 
     def commits(self):
         return self.get_json(self.get_commits_url())
@@ -42,8 +46,23 @@ class GitHubAPI():
                 pass
 
     def get_sha(self):
-        ref = self.find_ref_in('commits')#self.find_ref_in('heads') or self.find_ref_in('tags') or
-        if ref:
-            return ref.get('sha') or ref['object']['sha']
+        shas = []
+        ref = self.get_json(self.get_commits_url())
+        if ref.get('message') == 'Not Found':
+            raise Exception('Commit sha not found for ref: %s' % self.ref)
+        else:
+            shas.append(ref['sha'])
+            self.commit_sha = ref['sha']
+        for where in ['heads', 'tags']:
+            try:
+                for ref in self.get_json(self.get_refs_url() + '/' + where):
+                    name = ref['ref'].split('/',2)[-1]
+                    if name == self.ref:
+                        shas.append(ref['object']['sha'])
+            except urllib2.HTTPError:
+                pass
+        shas = list(set(shas))
+        if shas:
+            return shas
         else:
             raise Exception('Ref was not found: %s' % self.ref)
