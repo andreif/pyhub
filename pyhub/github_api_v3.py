@@ -6,7 +6,7 @@ class GitHubAPI():
     def __init__(self, user, repo, ref=None):
         self.user = user
         self.repo = repo
-        self.ref = ref or 'head'
+        self.ref = ref or 'HEAD'
         self.commit_sha = None
         self.sha = self.get_sha()
 
